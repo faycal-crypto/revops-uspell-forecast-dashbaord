@@ -10,28 +10,35 @@ const EXCLUDED_OWNERS = ["Jon Scharfman"];
 const fmtUSD = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
 
-function monthKey(iso) {
+function dayKey(iso) {
   if (!iso) return null;
-  return iso.slice(0, 7);
+  return iso.slice(0, 10); // YYYY-MM-DD
 }
 
-function currentMonthKey() {
+function todayKey() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function buildMonths(deals) {
-  const set = new Set();
+function firstOfMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+// bounds of all deal close dates, for the date input min/max
+function dateBounds(deals) {
+  let min = null, max = null;
   for (const d of deals) {
-    const k = monthKey(d.closedate);
-    if (k) set.add(k);
+    const k = dayKey(d.closedate);
+    if (!k) continue;
+    if (!min || k < min) min = k;
+    if (!max || k > max) max = k;
   }
-  set.add(currentMonthKey());
-  return Array.from(set).sort().reverse();
+  return { min, max };
 }
 
 function inRange(iso, from, to) {
-  const k = monthKey(iso);
+  const k = dayKey(iso);
   if (!k) return false;
   return k >= from && k <= to;
 }
@@ -39,8 +46,8 @@ function inRange(iso, from, to) {
 export default function Recap() {
   const [deals, setDeals] = useState(null);
   const [error, setError] = useState(null);
-  const [from, setFrom] = useState(currentMonthKey());
-  const [to, setTo] = useState(currentMonthKey());
+  const [from, setFrom] = useState(firstOfMonthKey());
+  const [to, setTo] = useState(todayKey());
 
   useEffect(() => {
     fetch("/api/deals")
@@ -52,9 +59,8 @@ export default function Recap() {
       .catch((e) => setError(String(e.message || e)));
   }, []);
 
-  const months = useMemo(() => (deals ? buildMonths(deals) : []), [deals]);
+  const bounds = useMemo(() => (deals ? dateBounds(deals) : { min: null, max: null }), [deals]);
 
-  // keep from <= to
   const lo = from <= to ? from : to;
   const hi = from <= to ? to : from;
 
@@ -87,7 +93,7 @@ export default function Recap() {
     );
   }, [rows]);
 
-  const selectStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14 };
+  const dateStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14, colorScheme: "dark" };
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
@@ -95,13 +101,9 @@ export default function Recap() {
         <h1 style={{ fontSize: 22, margin: 0 }}>Recap — Upsell Forecast</h1>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 13, opacity: 0.6 }}>From</span>
-          <select value={from} onChange={(e) => setFrom(e.target.value)} style={selectStyle}>
-            {months.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <input type="date" value={from} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setFrom(e.target.value)} style={dateStyle} />
           <span style={{ fontSize: 13, opacity: 0.6 }}>To</span>
-          <select value={to} onChange={(e) => setTo(e.target.value)} style={selectStyle}>
-            {months.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <input type="date" value={to} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setTo(e.target.value)} style={dateStyle} />
         </div>
       </div>
 
@@ -118,7 +120,7 @@ export default function Recap() {
           </div>
 
           {rows.length === 0 ? (
-            <p style={{ opacity: 0.6 }}>No deals for {lo === hi ? lo : `${lo} → ${hi}`}.</p>
+            <p style={{ opacity: 0.6 }}>No deals for {lo} → {hi}.</p>
           ) : (
             <div style={{ border: "1px solid #2c313a", borderRadius: 12, overflow: "hidden", background: "#14171d" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
