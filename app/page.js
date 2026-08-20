@@ -104,9 +104,9 @@ export default function Recap() {
       {deals && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 32 }}>
-            <Stat label="Deals" value={totals.count} def="Number of Upsell Forecast deals with a close date in the selected period." />
-            <Stat label="Gross Amount" value={fmtUSD(totals.amount)} def="Sum of the raw deal amount across all Upsell Forecast deals in the period." />
-            <Stat label={`Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} def="Gross Amount multiplied by a fixed 75% win rate — matching the win rate used in Vivian's Revenue Forecast." />
+            <Stat label="Upsell (Forecast) Deals" value={totals.count} def="Number of Upsell Forecast deals with a close date in the selected period." />
+            <Stat label="Upsell (Forecast) Gross Amount" value={fmtUSD(totals.amount)} def="Sum of the raw deal amount across all Upsell Forecast deals in the period." />
+            <Stat label={`Upsell (Forecast) Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} def="Gross Amount multiplied by a fixed 75% win rate — matching the win rate used in Vivian's Revenue Forecast." />
             <Stat label="Closed Won" value={fmtUSD(wonTotal)} def="Sum of amounts for deals in Closed Won (Expansion) with a close date in the period." />
           </div>
 
@@ -156,16 +156,29 @@ function DealTable({ title, deals, showWeighted }) {
     else { setSortKey(key); setSortDir(key === "dealname" || key === "owner_name" ? "asc" : "desc"); }
   };
 
-  const arrow = (key) => (key === sortKey ? (sortDir === "asc" ? " ▲" : " ▼") : "");
-
-  const th = (label, key, right) => (
-    <th
-      onClick={() => onSort(key)}
-      style={{ padding: "10px 12px", textAlign: right ? "right" : "left", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
-    >
-      {label}{arrow(key)}
-    </th>
-  );
+  const th = (label, key, right) => {
+    const active = key === sortKey;
+    return (
+      <th style={{ padding: "8px 12px", textAlign: right ? "right" : "left", whiteSpace: "nowrap" }}>
+        <button
+          onClick={() => onSort(key)}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            background: active ? "#2a303b" : "#20242c",
+            color: active ? "#fff" : "#c7ccd4",
+            border: "1px solid #333a45", borderRadius: 6,
+            padding: "4px 8px", fontSize: 12, cursor: "pointer",
+            fontWeight: active ? 600 : 400,
+          }}
+        >
+          {label}
+          <span style={{ opacity: active ? 1 : 0.4, fontSize: 10 }}>
+            {active ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}
+          </span>
+        </button>
+      </th>
+    );
+  };
 
   return (
     <section style={{ marginBottom: 36 }}>
@@ -179,13 +192,15 @@ function DealTable({ title, deals, showWeighted }) {
         </div>
       </div>
 
+      <p style={{ fontSize: 12, opacity: 0.4, margin: "0 0 8px" }}>Click a column button to sort ▲▼</p>
+
       {rows.length === 0 ? (
         <p style={{ opacity: 0.6 }}>No deals.</p>
       ) : (
         <div style={{ border: "1px solid #2c313a", borderRadius: 12, overflow: "hidden", background: "#14171d" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              <tr style={{ opacity: 0.6, background: "#181c23" }}>
+              <tr style={{ background: "#181c23" }}>
                 {th("Deal", "dealname")}
                 {th("Deal Owner", "owner_name")}
                 {th("Locations", "locations", true)}
