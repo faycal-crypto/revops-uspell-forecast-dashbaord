@@ -30,16 +30,23 @@ function buildMonths(deals) {
   return Array.from(set).sort().reverse();
 }
 
+function inRange(iso, from, to) {
+  const k = monthKey(iso);
+  if (!k) return false;
+  return k >= from && k <= to;
+}
+
 export default function Recap() {
   const [deals, setDeals] = useState(null);
   const [error, setError] = useState(null);
-  const [month, setMonth] = useState(currentMonthKey());
+  const [from, setFrom] = useState(currentMonthKey());
+  const [to, setTo] = useState(currentMonthKey());
 
   useEffect(() => {
     fetch("/api/deals")
       .then((r) => r.json())
       .then((data) => {
-        if (!data.ok) throw new Error(data.error || "Erreur API");
+        if (!data.ok) throw new Error(data.error || "API error");
         setDeals(data.deals);
       })
       .catch((e) => setError(String(e.message || e)));
@@ -47,23 +54,27 @@ export default function Recap() {
 
   const months = useMemo(() => (deals ? buildMonths(deals) : []), [deals]);
 
+  // keep from <= to
+  const lo = from <= to ? from : to;
+  const hi = from <= to ? to : from;
+
   const rows = useMemo(() => {
     if (!deals) return [];
     return deals
       .filter((d) => d.dealstage === STAGE_UPSELL)
-      .filter((d) => monthKey(d.closedate) === month)
+      .filter((d) => inRange(d.closedate, lo, hi))
       .filter((d) => !EXCLUDED_OWNERS.includes(d.owner_name))
       .sort((a, b) => (b.amount || 0) - (a.amount || 0));
-  }, [deals, month]);
+  }, [deals, lo, hi]);
 
   const won = useMemo(() => {
     if (!deals) return 0;
     return deals
       .filter((d) => d.dealstage === STAGE_WON)
-      .filter((d) => monthKey(d.closedate) === month)
+      .filter((d) => inRange(d.closedate, lo, hi))
       .filter((d) => !EXCLUDED_OWNERS.includes(d.owner_name))
       .reduce((s, d) => s + (d.amount || 0), 0);
-  }, [deals, month]);
+  }, [deals, lo, hi]);
 
   const totals = useMemo(() => {
     return rows.reduce(
@@ -76,35 +87,38 @@ export default function Recap() {
     );
   }, [rows]);
 
+  const selectStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14 };
+
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>Récap — Upsell Forecast</h1>
-        <select
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          style={{ background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14 }}
-        >
-          {months.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+        <h1 style={{ fontSize: 22, margin: 0 }}>Recap — Upsell Forecast</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 13, opacity: 0.6 }}>From</span>
+          <select value={from} onChange={(e) => setFrom(e.target.value)} style={selectStyle}>
+            {months.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <span style={{ fontSize: 13, opacity: 0.6 }}>To</span>
+          <select value={to} onChange={(e) => setTo(e.target.value)} style={selectStyle}>
+            {months.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
       </div>
 
-      {error && <p style={{ color: "#ff6b6b" }}>Erreur : {error}</p>}
-      {!deals && !error && <p style={{ opacity: 0.6 }}>Chargement…</p>}
+      {error && <p style={{ color: "#ff6b6b" }}>Error: {error}</p>}
+      {!deals && !error && <p style={{ opacity: 0.6 }}>Loading…</p>}
 
       {deals && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>
-            <Stat label="Deals" value={totals.count} />
-            <Stat label="Amount brut" value={fmtUSD(totals.amount)} />
-            <Stat label={`Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} />
-            <Stat label="Closed Won (mois)" value={fmtUSD(won)} />
+            <Stat label="Deals" value={totals.count} def="Number of Upsell Forecast deals with a close date in the selected period." />
+            <Stat label="Gross Amount" value={fmtUSD(totals.amount)} def="Sum of the raw deal amount across all Upsell Forecast deals in the period." />
+            <Stat label={`Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} def="Gross Amount multiplied by a fixed 75% probability factor." />
+            <Stat label="Closed Won" value={fmtUSD(won)} def="Sum of amounts for deals in Closed Won (Expansion) with a close date in the period." />
           </div>
 
           {rows.length === 0 ? (
-            <p style={{ opacity: 0.6 }}>Aucun deal pour {month}.</p>
+            <p style={{ opacity: 0.6 }}>No deals for {lo === hi ? lo : `${lo} → ${hi}`}.</p>
           ) : (
             <div style={{ border: "1px solid #2c313a", borderRadius: 12, overflow: "hidden", background: "#14171d" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -139,11 +153,12 @@ export default function Recap() {
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, def }) {
   return (
     <div style={{ border: "1px solid #2c313a", borderRadius: 12, padding: "14px 16px", background: "#14171d" }}>
       <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 600 }}>{value}</div>
+      <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6 }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.45, lineHeight: 1.4 }}>{def}</div>
     </div>
   );
 }
