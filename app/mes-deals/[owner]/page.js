@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 const STAGE_UPSELL = "100309148";
+const STAGE_WON = "13452120";
 const WEIGHT = 0.75;
 const OWNERS = [
   "Michael Calacino",
@@ -123,6 +124,14 @@ export default function OwnerView() {
     );
   }, [myDeals]);
 
+  const wonTotal = useMemo(() => {
+    if (!deals) return 0;
+    return deals
+      .filter((d) => d.dealstage === STAGE_WON && d.owner_name === owner)
+      .filter((d) => inRange(d.closedate, lo, hi))
+      .reduce((s, d) => s + (d.amount || 0), 0);
+  }, [deals, owner, lo, hi]);
+
   const dateStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14, colorScheme: "dark" };
 
   if (!valid) {
@@ -140,9 +149,12 @@ export default function OwnerView() {
           <input type="date" value={to} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setTo(e.target.value)} style={dateStyle} />
         </div>
       </div>
-      <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 20 }}>
-        {totals.count} deals · Gross {fmtUSD(totals.amount)} · Weighted {fmtUSD(totals.weighted)}
-      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, margin: "16px 0 28px" }}>
+        <Stat label="Upsell (Forecast) Deals" value={totals.count} def="Number of Upsell Forecast deals with a close date in the selected period." />
+        <Stat label="Upsell (Forecast) Gross Amount" value={fmtUSD(totals.amount)} def="Sum of the raw deal amount across all Upsell Forecast deals in the period." />
+        <Stat label={`Upsell (Forecast) Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} def="Gross Amount multiplied by a fixed 75% win rate — matching the win rate used in Vivian's Revenue Forecast." />
+        <Stat label="Closed Won" value={fmtUSD(wonTotal)} def="Sum of amounts for deals in Closed Won (Expansion) with a close date in the period." />
+      </div>
 
       {error && <p style={{ color: "#ff6b6b" }}>Error: {error}</p>}
       {!deals && !error && <p style={{ opacity: 0.6 }}>Loading…</p>}
@@ -186,5 +198,16 @@ export default function OwnerView() {
         );
       })}
     </main>
+  );
+}
+
+
+function Stat({ label, value, def }) {
+  return (
+    <div style={{ border: "1px solid #2c313a", borderRadius: 12, padding: "14px 16px", background: "#14171d" }}>
+      <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6 }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.45, lineHeight: 1.4 }}>{def}</div>
+    </div>
   );
 }
