@@ -6,6 +6,8 @@ import { useParams } from "next/navigation";
 const STAGE_UPSELL = "100309148";
 const STAGE_WON = "13452120";
 const WEIGHT = 0.75;
+const HUB_ID = "21233403";
+const hsUrl = (id) => `https://app.hubspot.com/contacts/${HUB_ID}/record/0-3/${id}`;
 const OWNERS = [
   "Michael Calacino",
   "Cole Maher",
@@ -169,6 +171,9 @@ export default function OwnerView() {
               <span style={{ fontSize: 13, opacity: 0.7, whiteSpace: "nowrap" }}>
                 {fmtUSD(d.amount)} · W {fmtUSD((d.amount || 0) * WEIGHT)} · {d.locations ?? "—"} loc
               </span>
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 10 }}>
+              Record ID: <a href={hsUrl(d.id)} target="_blank" rel="noopener noreferrer" style={{ color: "#6ea8fe" }}>{d.id} ↗</a>
             </div>
 
             {cur && (

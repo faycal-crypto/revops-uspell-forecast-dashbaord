@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 const STAGE_UPSELL = "100309148";
 const STAGE_WON = "13452120";
 const WEIGHT = 0.75;
+const HUB_ID = "21233403";
+const hsUrl = (id) => `https://app.hubspot.com/contacts/${HUB_ID}/record/0-3/${id}`;
 const EXCLUDED_OWNERS = ["Jon Scharfman"];
 
 const fmtUSD = (n) =>
@@ -208,6 +210,7 @@ function DealTable({ title, deals, showWeighted }) {
                 {th("Amount", "amount", true)}
                 {showWeighted && th("Weighted", "weighted", true)}
                 {th("Close date", "closedate")}
+                <th style={{ padding: "8px 12px", textAlign: "left" }}>HubSpot</th>
               </tr>
             </thead>
             <tbody>
@@ -219,6 +222,9 @@ function DealTable({ title, deals, showWeighted }) {
                   <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD(d.amount)}</td>
                   {showWeighted && <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD((d.amount || 0) * WEIGHT)}</td>}
                   <td style={{ padding: "10px 12px" }}>{d.closedate ? d.closedate.slice(0, 10) : "—"}</td>
+                  <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
+                    <a href={hsUrl(d.id)} target="_blank" rel="noopener noreferrer" style={{ color: "#6ea8fe" }}>{d.id} ↗</a>
+                  </td>
                 </tr>
               ))}
             </tbody>
