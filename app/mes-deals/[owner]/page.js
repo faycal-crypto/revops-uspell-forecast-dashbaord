@@ -8,6 +8,7 @@ const STAGE_WON = "13452120";
 const WEIGHT = 0.75;
 const HUB_ID = "21233403";
 const hsUrl = (id) => `https://app.hubspot.com/contacts/${HUB_ID}/record/0-3/${id}`;
+const NOTES_TABLE_URL = "https://coda.io/d/_d3vHRxIEnIw#Notes_tuRIrEDp";
 const OWNERS = [
   "Michael Calacino",
   "Cole Maher",
@@ -89,11 +90,14 @@ export default function OwnerView() {
       .sort((a, b) => (b.amount || 0) - (a.amount || 0));
   }, [deals, owner, lo, hi]);
 
-  const latestNote = useMemo(() => {
+  const notesByDeal = useMemo(() => {
     const map = {};
     for (const n of notes) {
-      const prev = map[n.deal_id];
-      if (!prev || (n.timestamp || "") > (prev.timestamp || "")) map[n.deal_id] = n;
+      if (!n.deal_id) continue;
+      (map[n.deal_id] = map[n.deal_id] || []).push(n);
+    }
+    for (const k of Object.keys(map)) {
+      map[k].sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""));
     }
     return map;
   }, [notes]);
@@ -163,7 +167,8 @@ export default function OwnerView() {
       {deals && myDeals.length === 0 && <p style={{ opacity: 0.6 }}>No Upsell Forecast deals for {owner} in this period.</p>}
 
       {myDeals.map((d) => {
-        const cur = latestNote[d.id];
+        const dealNotes = notesByDeal[d.id] || [];
+        const recent = dealNotes.slice(0, 3);
         return (
           <div key={d.id} style={{ border: "1px solid #2c313a", borderRadius: 12, padding: 16, marginBottom: 16, background: "#14171d" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10, gap: 12 }}>
@@ -176,10 +181,19 @@ export default function OwnerView() {
               Record ID: <a href={hsUrl(d.id)} target="_blank" rel="noopener noreferrer" style={{ color: "#6ea8fe" }}>{d.id} ↗</a>
             </div>
 
-            {cur && (
-              <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 10, padding: "8px 10px", background: "#181c23", borderRadius: 8 }}>
-                <div style={{ opacity: 0.5, marginBottom: 2 }}>Current note · {cur.cs_name} · {cur.timestamp ? cur.timestamp.slice(0, 16).replace("T", " ") : ""}</div>
-                {cur.note}
+            {recent.length > 0 && (
+              <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                {recent.map((n, i) => (
+                  <div key={i} style={{ fontSize: 12, opacity: 0.8, padding: "8px 10px", background: "#181c23", borderRadius: 8 }}>
+                    <div style={{ opacity: 0.5, marginBottom: 2 }}>{n.cs_name} · {n.timestamp ? n.timestamp.slice(0, 16).replace("T", " ") : ""}</div>
+                    {n.note}
+                  </div>
+                ))}
+                {dealNotes.length > 3 && (
+                  <a href={NOTES_TABLE_URL} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#6ea8fe" }}>
+                    See all {dealNotes.length} notes ↗
+                  </a>
+                )}
               </div>
             )}
 
