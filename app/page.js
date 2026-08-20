@@ -123,6 +123,26 @@ export default function Recap() {
   const covGross = gap > 0 ? totals.amount / gap : null;
   const covWeighted = gap > 0 ? totals.weighted / gap : null;
 
+  const attainmentTone = useMemo(() => {
+    if (attainment === null) return null;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    // fraction of the selected period elapsed as of today
+    const start = new Date(lo + "T00:00:00Z");
+    const end = new Date(hi + "T00:00:00Z");
+    const totalDays = Math.round((end - start) / 86400000) + 1;
+    let elapsedDays;
+    if (todayStr > hi) elapsedDays = totalDays;       // period closed
+    else if (todayStr < lo) elapsedDays = 0;          // period not started
+    else elapsedDays = Math.round((new Date(todayStr + "T00:00:00Z") - start) / 86400000) + 1;
+    const expectedFrac = totalDays > 0 ? elapsedDays / totalDays : 1;
+    const expected = goal * expectedFrac;
+    const pace = expected > 0 ? wonTotal / expected : (wonTotal > 0 ? Infinity : 0);
+    return pace >= 1 ? "green" : pace >= 0.8 ? "yellow" : "red";
+  }, [attainment, goal, wonTotal, lo, hi]);
+
+  const covGrossTone = covGross === null ? null : covGross >= 3 ? "green" : covGross >= 1 ? "yellow" : "red";
+  const covWeightedTone = covWeighted === null ? null : covWeighted >= 3 ? "green" : covWeighted >= 1 ? "yellow" : "red";
+
   const dateStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14, colorScheme: "dark" };
 
   return (
@@ -152,9 +172,9 @@ export default function Recap() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 32 }}>
             <Stat label="Goal" value={goal > 0 ? fmtUSD(goal) : "—"} def="Team goal, prorated by day across each month in the period." />
             <Stat label="Gap" value={goal > 0 ? fmtUSD(gap) : "—"} def="Goal minus Closed Won — what is left to reach the goal." />
-            <Stat label="Goal Attainment" value={attainment !== null ? `${Math.round(attainment * 100)}%` : "—"} def="Closed Won divided by Goal." />
-            <Stat label="Coverage (Gross)" value={covGross !== null ? `${covGross.toFixed(2)}×` : "—"} def="Gross Amount divided by Gap. Shown only while a positive gap remains." />
-            <Stat label="Coverage (Weighted)" value={covWeighted !== null ? `${covWeighted.toFixed(2)}×` : "—"} def="Weighted divided by Gap. Shown only while a positive gap remains." />
+            <Stat label="Goal Attainment" value={attainment !== null ? `${Math.round(attainment * 100)}%` : "—"} def="Closed Won divided by Goal. Color reflects pacing vs. time elapsed (or actual attainment once the period is closed)." tone={attainmentTone} />
+            <Stat label="Coverage (Gross)" value={covGross !== null ? `${covGross.toFixed(2)}×` : "—"} def="Gross Amount divided by Gap. Shown only while a positive gap remains." tone={covGrossTone} />
+            <Stat label="Coverage (Weighted)" value={covWeighted !== null ? `${covWeighted.toFixed(2)}×` : "—"} def="Weighted divided by Gap. Shown only while a positive gap remains." tone={covWeightedTone} />
           </div>
 
           <DealTable title="Upsell Forecast Deals" deals={upsell} showWeighted />
@@ -279,9 +299,16 @@ function DealTable({ title, deals, showWeighted }) {
   );
 }
 
-function Stat({ label, value, def }) {
+const TONES = {
+  green: { bg: "#132a1d", border: "#2f7d54" },
+  yellow: { bg: "#2b2712", border: "#8a7a2f" },
+  red: { bg: "#2c1618", border: "#8a3a3f" },
+};
+
+function Stat({ label, value, def, tone }) {
+  const t = tone && TONES[tone];
   return (
-    <div style={{ border: "1px solid #2c313a", borderRadius: 12, padding: 16, background: "#14171d", display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
+    <div style={{ border: `1px solid ${t ? t.border : "#2c313a"}`, borderRadius: 12, padding: 16, background: t ? t.bg : "#14171d", display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
       <div style={{ fontSize: 12, opacity: 0.6, minHeight: 32, lineHeight: 1.3 }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 600, margin: "8px 0 10px" }}>{value}</div>
       <div style={{ fontSize: 11, opacity: 0.45, lineHeight: 1.45, marginTop: "auto" }}>{def}</div>
