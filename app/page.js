@@ -10,22 +10,16 @@ const EXCLUDED_OWNERS = ["Jon Scharfman"];
 const fmtUSD = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
 
-function dayKey(iso) {
-  if (!iso) return null;
-  return iso.slice(0, 10); // YYYY-MM-DD
-}
+const dayKey = (iso) => (iso ? iso.slice(0, 10) : null);
 
 function todayKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-
 function firstOfMonthKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
-
-// bounds of all deal close dates, for the date input min/max
 function dateBounds(deals) {
   let min = null, max = null;
   for (const d of deals) {
@@ -36,12 +30,10 @@ function dateBounds(deals) {
   }
   return { min, max };
 }
-
-function inRange(iso, from, to) {
+const inRange = (iso, from, to) => {
   const k = dayKey(iso);
-  if (!k) return false;
-  return k >= from && k <= to;
-}
+  return k ? k >= from && k <= to : false;
+};
 
 export default function Recap() {
   const [deals, setDeals] = useState(null);
@@ -60,30 +52,27 @@ export default function Recap() {
   }, []);
 
   const bounds = useMemo(() => (deals ? dateBounds(deals) : { min: null, max: null }), [deals]);
-
   const lo = from <= to ? from : to;
   const hi = from <= to ? to : from;
 
-  const rows = useMemo(() => {
+  const upsell = useMemo(() => {
     if (!deals) return [];
     return deals
       .filter((d) => d.dealstage === STAGE_UPSELL)
       .filter((d) => inRange(d.closedate, lo, hi))
-      .filter((d) => !EXCLUDED_OWNERS.includes(d.owner_name))
-      .sort((a, b) => (b.amount || 0) - (a.amount || 0));
+      .filter((d) => !EXCLUDED_OWNERS.includes(d.owner_name));
   }, [deals, lo, hi]);
 
-  const won = useMemo(() => {
-    if (!deals) return 0;
+  const wonDeals = useMemo(() => {
+    if (!deals) return [];
     return deals
       .filter((d) => d.dealstage === STAGE_WON)
       .filter((d) => inRange(d.closedate, lo, hi))
-      .filter((d) => !EXCLUDED_OWNERS.includes(d.owner_name))
-      .reduce((s, d) => s + (d.amount || 0), 0);
+      .filter((d) => !EXCLUDED_OWNERS.includes(d.owner_name));
   }, [deals, lo, hi]);
 
   const totals = useMemo(() => {
-    return rows.reduce(
+    return upsell.reduce(
       (acc, d) => ({
         count: acc.count + 1,
         amount: acc.amount + (d.amount || 0),
@@ -91,12 +80,14 @@ export default function Recap() {
       }),
       { count: 0, amount: 0, weighted: 0 }
     );
-  }, [rows]);
+  }, [upsell]);
+
+  const wonTotal = useMemo(() => wonDeals.reduce((s, d) => s + (d.amount || 0), 0), [wonDeals]);
 
   const dateStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14, colorScheme: "dark" };
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
+    <main style={{ maxWidth: 1150, margin: "0 auto", padding: "32px 24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <h1 style={{ fontSize: 22, margin: 0 }}>Recap — Upsell Forecast</h1>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -112,46 +103,113 @@ export default function Recap() {
 
       {deals && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 32 }}>
             <Stat label="Deals" value={totals.count} def="Number of Upsell Forecast deals with a close date in the selected period." />
             <Stat label="Gross Amount" value={fmtUSD(totals.amount)} def="Sum of the raw deal amount across all Upsell Forecast deals in the period." />
-            <Stat label={`Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} def="Gross Amount multiplied by a fixed 75% probability factor." />
-            <Stat label="Closed Won" value={fmtUSD(won)} def="Sum of amounts for deals in Closed Won (Expansion) with a close date in the period." />
+            <Stat label={`Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} def="Gross Amount multiplied by a fixed 75% win rate — matching the win rate used in Vivian's Revenue Forecast." />
+            <Stat label="Closed Won" value={fmtUSD(wonTotal)} def="Sum of amounts for deals in Closed Won (Expansion) with a close date in the period." />
           </div>
 
-          {rows.length === 0 ? (
-            <p style={{ opacity: 0.6 }}>No deals for {lo} → {hi}.</p>
-          ) : (
-            <div style={{ border: "1px solid #2c313a", borderRadius: 12, overflow: "hidden", background: "#14171d" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ textAlign: "left", opacity: 0.6, background: "#181c23" }}>
-                    <th style={{ padding: "10px 12px" }}>Deal</th>
-                    <th style={{ padding: "10px 12px" }}>Deal Owner</th>
-                    <th style={{ padding: "10px 12px", textAlign: "right" }}>Locations</th>
-                    <th style={{ padding: "10px 12px", textAlign: "right" }}>Amount</th>
-                    <th style={{ padding: "10px 12px", textAlign: "right" }}>Weighted</th>
-                    <th style={{ padding: "10px 12px" }}>Close date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((d) => (
-                    <tr key={d.id} style={{ borderTop: "1px solid #232830" }}>
-                      <td style={{ padding: "10px 12px" }}>{d.dealname}</td>
-                      <td style={{ padding: "10px 12px", opacity: 0.85 }}>{d.owner_name}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{d.locations ?? "—"}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD(d.amount)}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD((d.amount || 0) * WEIGHT)}</td>
-                      <td style={{ padding: "10px 12px" }}>{d.closedate ? d.closedate.slice(0, 10) : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <DealTable title="Upsell Forecast Deals" deals={upsell} showWeighted />
+          <DealTable title="Closed Won Deals" deals={wonDeals} />
         </>
       )}
     </main>
+  );
+}
+
+function DealTable({ title, deals, showWeighted }) {
+  const [owner, setOwner] = useState("All");
+  const [sortKey, setSortKey] = useState("amount");
+  const [sortDir, setSortDir] = useState("desc");
+
+  const owners = useMemo(() => {
+    const s = new Set(deals.map((d) => d.owner_name || "(unknown)"));
+    return ["All", ...Array.from(s).sort()];
+  }, [deals]);
+
+  const rows = useMemo(() => {
+    let r = deals.slice();
+    if (owner !== "All") r = r.filter((d) => (d.owner_name || "(unknown)") === owner);
+    const val = (d) => {
+      switch (sortKey) {
+        case "dealname": return (d.dealname || "").toLowerCase();
+        case "owner_name": return (d.owner_name || "").toLowerCase();
+        case "locations": return d.locations ?? -1;
+        case "amount": return d.amount || 0;
+        case "weighted": return (d.amount || 0) * WEIGHT;
+        case "closedate": return d.closedate || "";
+        default: return 0;
+      }
+    };
+    r.sort((a, b) => {
+      const va = val(a), vb = val(b);
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return r;
+  }, [deals, owner, sortKey, sortDir]);
+
+  const onSort = (key) => {
+    if (key === sortKey) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir(key === "dealname" || key === "owner_name" ? "asc" : "desc"); }
+  };
+
+  const arrow = (key) => (key === sortKey ? (sortDir === "asc" ? " ▲" : " ▼") : "");
+
+  const th = (label, key, right) => (
+    <th
+      onClick={() => onSort(key)}
+      style={{ padding: "10px 12px", textAlign: right ? "right" : "left", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+    >
+      {label}{arrow(key)}
+    </th>
+  );
+
+  return (
+    <section style={{ marginBottom: 36 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+        <h2 style={{ fontSize: 16, margin: 0 }}>{title} <span style={{ opacity: 0.5, fontWeight: 400 }}>({rows.length})</span></h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 13, opacity: 0.6 }}>Owner</span>
+          <select value={owner} onChange={(e) => setOwner(e.target.value)} style={{ background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "6px 10px", fontSize: 13 }}>
+            {owners.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p style={{ opacity: 0.6 }}>No deals.</p>
+      ) : (
+        <div style={{ border: "1px solid #2c313a", borderRadius: 12, overflow: "hidden", background: "#14171d" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ opacity: 0.6, background: "#181c23" }}>
+                {th("Deal", "dealname")}
+                {th("Deal Owner", "owner_name")}
+                {th("Locations", "locations", true)}
+                {th("Amount", "amount", true)}
+                {showWeighted && th("Weighted", "weighted", true)}
+                {th("Close date", "closedate")}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((d) => (
+                <tr key={d.id} style={{ borderTop: "1px solid #232830" }}>
+                  <td style={{ padding: "10px 12px" }}>{d.dealname}</td>
+                  <td style={{ padding: "10px 12px", opacity: 0.85 }}>{d.owner_name}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "right" }}>{d.locations ?? "—"}</td>
+                  <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD(d.amount)}</td>
+                  {showWeighted && <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD((d.amount || 0) * WEIGHT)}</td>}
+                  <td style={{ padding: "10px 12px" }}>{d.closedate ? d.closedate.slice(0, 10) : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
