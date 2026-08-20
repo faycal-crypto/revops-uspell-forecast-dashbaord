@@ -300,9 +300,9 @@ function DealTable({ title, deals, showWeighted }) {
 }
 
 const TONES = {
-  green: { bg: "#132a1d", border: "#2f7d54" },
-  yellow: { bg: "#2b2712", border: "#8a7a2f" },
-  red: { bg: "#2c1618", border: "#8a3a3f" },
+  green: { bg: "#132a1d", border: "#2f7d54", text: "#5fd694" },
+  yellow: { bg: "#2b2712", border: "#8a7a2f", text: "#e2c94e" },
+  red: { bg: "#2c1618", border: "#8a3a3f", text: "#f0757c" },
 };
 
 function Stat({ label, value, def, tone }) {
@@ -310,7 +310,7 @@ function Stat({ label, value, def, tone }) {
   return (
     <div style={{ border: `1px solid ${t ? t.border : "#2c313a"}`, borderRadius: 12, padding: 16, background: t ? t.bg : "#14171d", display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
       <div style={{ fontSize: 12, opacity: 0.6, minHeight: 32, lineHeight: 1.3 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 600, margin: "8px 0 10px" }}>{value}</div>
+      <div style={{ fontSize: 22, fontWeight: 600, margin: "8px 0 10px", color: t ? t.text : "#e6e6e6" }}>{value}</div>
       <div style={{ fontSize: 11, opacity: 0.45, lineHeight: 1.45, marginTop: "auto" }}>{def}</div>
     </div>
   );
