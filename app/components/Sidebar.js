@@ -16,6 +16,7 @@ const slug = (name) => encodeURIComponent(name);
 
 export default function Sidebar() {
   const pathname = usePathname();
+  if (pathname === "/login") return null;
   const [open, setOpen] = useState(true);
 
   const linkStyle = (active) => ({
