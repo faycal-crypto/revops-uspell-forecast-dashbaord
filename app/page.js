@@ -231,10 +231,10 @@ function DealTable({ title, deals, showWeighted }) {
 
 function Stat({ label, value, def }) {
   return (
-    <div style={{ border: "1px solid #2c313a", borderRadius: 12, padding: "14px 16px", background: "#14171d" }}>
-      <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 6 }}>{value}</div>
-      <div style={{ fontSize: 11, opacity: 0.45, lineHeight: 1.4 }}>{def}</div>
+    <div style={{ border: "1px solid #2c313a", borderRadius: 12, padding: 16, background: "#14171d", display: "flex", flexDirection: "column", height: "100%", boxSizing: "border-box" }}>
+      <div style={{ fontSize: 12, opacity: 0.6, minHeight: 32, lineHeight: 1.3 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 600, margin: "8px 0 10px" }}>{value}</div>
+      <div style={{ fontSize: 11, opacity: 0.45, lineHeight: 1.45, marginTop: "auto" }}>{def}</div>
     </div>
   );
 }
