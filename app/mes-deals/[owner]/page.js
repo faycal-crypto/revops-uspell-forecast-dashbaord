@@ -17,6 +17,32 @@ const OWNERS = [
 const fmtUSD = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
 
+const dayKey = (iso) => (iso ? iso.slice(0, 10) : null);
+
+function firstOfMonthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+function lastOfMonthKey() {
+  const d = new Date();
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`;
+}
+function dateBounds(deals) {
+  let min = null, max = null;
+  for (const d of deals) {
+    const k = dayKey(d.closedate);
+    if (!k) continue;
+    if (!min || k < min) min = k;
+    if (!max || k > max) max = k;
+  }
+  return { min, max };
+}
+const inRange = (iso, from, to) => {
+  const k = dayKey(iso);
+  return k ? k >= from && k <= to : false;
+};
+
 export default function OwnerView() {
   const params = useParams();
   const owner = decodeURIComponent(params.owner || "");
@@ -27,6 +53,8 @@ export default function OwnerView() {
   const [error, setError] = useState(null);
   const [drafts, setDrafts] = useState({});
   const [saving, setSaving] = useState({});
+  const [from, setFrom] = useState(firstOfMonthKey());
+  const [to, setTo] = useState(lastOfMonthKey());
 
   const loadNotes = () => {
     fetch("/api/notes")
@@ -46,12 +74,17 @@ export default function OwnerView() {
     loadNotes();
   }, []);
 
+  const bounds = useMemo(() => (deals ? dateBounds(deals) : { min: null, max: null }), [deals]);
+  const lo = from <= to ? from : to;
+  const hi = from <= to ? to : from;
+
   const myDeals = useMemo(() => {
     if (!deals) return [];
     return deals
       .filter((d) => d.dealstage === STAGE_UPSELL && d.owner_name === owner)
+      .filter((d) => inRange(d.closedate, lo, hi))
       .sort((a, b) => (b.amount || 0) - (a.amount || 0));
-  }, [deals, owner]);
+  }, [deals, owner, lo, hi]);
 
   const latestNote = useMemo(() => {
     const map = {};
@@ -90,20 +123,30 @@ export default function OwnerView() {
     );
   }, [myDeals]);
 
+  const dateStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14, colorScheme: "dark" };
+
   if (!valid) {
     return <main style={{ padding: "32px 24px" }}><p style={{ opacity: 0.6 }}>Unknown owner.</p></main>;
   }
 
   return (
     <main style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px" }}>
-      <h1 style={{ fontSize: 22, margin: "0 0 4px" }}>{owner}</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 12 }}>
+        <h1 style={{ fontSize: 22, margin: 0 }}>{owner}</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 13, opacity: 0.6 }}>From</span>
+          <input type="date" value={from} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setFrom(e.target.value)} style={dateStyle} />
+          <span style={{ fontSize: 13, opacity: 0.6 }}>To</span>
+          <input type="date" value={to} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setTo(e.target.value)} style={dateStyle} />
+        </div>
+      </div>
       <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 20 }}>
         {totals.count} deals · Gross {fmtUSD(totals.amount)} · Weighted {fmtUSD(totals.weighted)}
       </p>
 
       {error && <p style={{ color: "#ff6b6b" }}>Error: {error}</p>}
       {!deals && !error && <p style={{ opacity: 0.6 }}>Loading…</p>}
-      {deals && myDeals.length === 0 && <p style={{ opacity: 0.6 }}>No Upsell Forecast deals for {owner}.</p>}
+      {deals && myDeals.length === 0 && <p style={{ opacity: 0.6 }}>No Upsell Forecast deals for {owner} in this period.</p>}
 
       {myDeals.map((d) => {
         const cur = latestNote[d.id];

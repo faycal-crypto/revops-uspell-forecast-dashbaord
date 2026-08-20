@@ -12,9 +12,10 @@ const fmtUSD = (n) =>
 
 const dayKey = (iso) => (iso ? iso.slice(0, 10) : null);
 
-function todayKey() {
+function lastOfMonthKey() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`;
 }
 function firstOfMonthKey() {
   const d = new Date();
@@ -39,7 +40,7 @@ export default function Recap() {
   const [deals, setDeals] = useState(null);
   const [error, setError] = useState(null);
   const [from, setFrom] = useState(firstOfMonthKey());
-  const [to, setTo] = useState(todayKey());
+  const [to, setTo] = useState(lastOfMonthKey());
 
   useEffect(() => {
     fetch("/api/deals")
