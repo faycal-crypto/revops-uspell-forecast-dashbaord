@@ -41,6 +41,7 @@ const inRange = (iso, from, to) => {
 export default function Recap() {
   const [deals, setDeals] = useState(null);
   const [error, setError] = useState(null);
+  const [goals, setGoals] = useState([]);
   const [from, setFrom] = useState(firstOfMonthKey());
   const [to, setTo] = useState(lastOfMonthKey());
 
@@ -52,6 +53,11 @@ export default function Recap() {
         setDeals(data.deals);
       })
       .catch((e) => setError(String(e.message || e)));
+
+    fetch("/api/goals")
+      .then((r) => r.json())
+      .then((data) => { if (data.ok) setGoals(data.goals); })
+      .catch(() => {});
   }, []);
 
   const bounds = useMemo(() => (deals ? dateBounds(deals) : { min: null, max: null }), [deals]);
@@ -87,6 +93,36 @@ export default function Recap() {
 
   const wonTotal = useMemo(() => wonDeals.reduce((s, d) => s + (d.amount || 0), 0), [wonDeals]);
 
+  const goal = useMemo(() => {
+    // Team goals, prorated by day-overlap per month across [lo, hi]
+    const teamGoals = {};
+    for (const g of goals) {
+      if ((g.owner_name || "").toLowerCase() !== "team") continue;
+      if (g.month) teamGoals[g.month] = g.goal_amount || 0;
+    }
+    const start = new Date(lo + "T00:00:00Z");
+    const end = new Date(hi + "T00:00:00Z");
+    let total = 0;
+    for (const [mk, amount] of Object.entries(teamGoals)) {
+      const [y, m] = mk.split("-").map(Number);
+      if (!y || !m) continue;
+      const monthStart = new Date(Date.UTC(y, m - 1, 1));
+      const monthEnd = new Date(Date.UTC(y, m, 0)); // last day of month
+      const daysInMonth = monthEnd.getUTCDate();
+      const ovStart = monthStart > start ? monthStart : start;
+      const ovEnd = monthEnd < end ? monthEnd : end;
+      if (ovStart > ovEnd) continue;
+      const coveredDays = Math.round((ovEnd - ovStart) / 86400000) + 1;
+      total += amount * (coveredDays / daysInMonth);
+    }
+    return total;
+  }, [goals, lo, hi]);
+
+  const gap = goal - wonTotal;
+  const attainment = goal > 0 ? wonTotal / goal : null;
+  const covGross = gap > 0 ? totals.amount / gap : null;
+  const covWeighted = gap > 0 ? totals.weighted / gap : null;
+
   const dateStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14, colorScheme: "dark" };
 
   return (
@@ -111,6 +147,14 @@ export default function Recap() {
             <Stat label="Upsell (Forecast) Gross Amount" value={fmtUSD(totals.amount)} def="Sum of the raw deal amount across all Upsell Forecast deals in the period." />
             <Stat label={`Upsell (Forecast) Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} def="Gross Amount multiplied by a fixed 75% win rate — matching the win rate used in Vivian's Revenue Forecast." />
             <Stat label="Closed Won" value={fmtUSD(wonTotal)} def="Sum of amounts for deals in Closed Won (Expansion) with a close date in the period." />
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 32 }}>
+            <Stat label="Goal" value={goal > 0 ? fmtUSD(goal) : "—"} def="Team goal, prorated by day across each month in the period." />
+            <Stat label="Gap" value={goal > 0 ? fmtUSD(gap) : "—"} def="Goal minus Closed Won — what is left to reach the goal." />
+            <Stat label="Goal Attainment" value={attainment !== null ? `${Math.round(attainment * 100)}%` : "—"} def="Closed Won divided by Goal." />
+            <Stat label="Coverage (Gross)" value={covGross !== null ? `${covGross.toFixed(2)}×` : "—"} def="Gross Amount divided by Gap. Shown only while a positive gap remains." />
+            <Stat label="Coverage (Weighted)" value={covWeighted !== null ? `${covWeighted.toFixed(2)}×` : "—"} def="Weighted divided by Gap. Shown only while a positive gap remains." />
           </div>
 
           <DealTable title="Upsell Forecast Deals" deals={upsell} showWeighted />
