@@ -17,7 +17,9 @@ const PROPS = [
   "dealname",
 ];
 
-async function hsFetch(path, options = {}) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function hsFetch(path, options = {}, attempt = 0) {
   const res = await fetch(`${HS}${path}`, {
     ...options,
     headers: {
@@ -27,6 +29,16 @@ async function hsFetch(path, options = {}) {
     },
     cache: "no-store",
   });
+
+  if (res.status === 429) {
+    if (attempt >= 5) {
+      const body = await res.text();
+      throw new Error(`HubSpot 429 (max retries): ${body.slice(0, 200)}`);
+    }
+    await sleep(400 * (attempt + 1));
+    return hsFetch(path, options, attempt + 1);
+  }
+
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`HubSpot ${res.status}: ${body.slice(0, 300)}`);
@@ -64,6 +76,7 @@ async function fetchDeals() {
     });
     all.push(...(data.results || []));
     after = data.paging?.next?.after;
+    if (after) await sleep(250);
   } while (after);
 
   return all;
@@ -80,13 +93,15 @@ async function fetchOwners() {
       map[o.id] = name || o.email || o.id;
     }
     after = data.paging?.next?.after;
+    if (after) await sleep(250);
   } while (after);
   return map;
 }
 
 export async function GET() {
   try {
-    const [deals, owners] = await Promise.all([fetchDeals(), fetchOwners()]);
+    const owners = await fetchOwners();
+    const deals = await fetchDeals();
 
     const shaped = deals.map((d) => {
       const p = d.properties || {};
@@ -98,12 +113,8 @@ export async function GET() {
         dealstage: p.dealstage || "",
         stage_label: p.dealstage === STAGE_WON ? "Closed Won" : "Upsell (Forecast)",
         amount: p.amount ? Number(p.amount) : 0,
-        locations: p.number_of_locations__this_deal_
-          ? Number(p.number_of_locations__this_deal_)
-          : null,
-        rev_per_location: p.platform_revenue_per_location
-          ? Number(p.platform_revenue_per_location)
-          : null,
+        locations: p.number_of_locations__this_deal_ ? Number(p.number_of_locations__this_deal_) : null,
+        rev_per_location: p.platform_revenue_per_location ? Number(p.platform_revenue_per_location) : null,
         closedate: p.closedate || null,
       };
     });
