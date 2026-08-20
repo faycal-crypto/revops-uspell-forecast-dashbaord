@@ -161,6 +161,10 @@ export default function Recap() {
         </div>
       </div>
 
+      <div style={{ border: "1px solid #2c313a", borderRadius: 10, padding: "12px 14px", background: "#14171d", marginBottom: 24, fontSize: 13, opacity: 0.75, lineHeight: 1.5 }}>
+        This report forecasts Expansion upsell revenue. It considers only two deal stages: <strong>Upsell (Forecast)</strong> (open pipeline, weighted at a 75% win rate) and <strong>Closed Won</strong> (secured revenue). All figures are filtered by deal close date over the selected period.
+      </div>
+
       {error && <p style={{ color: "#ff6b6b" }}>Error: {error}</p>}
       {!deals && !error && <p style={{ opacity: 0.6 }}>Loading…</p>}
 
