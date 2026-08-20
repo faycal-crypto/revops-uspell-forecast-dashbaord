@@ -143,6 +143,10 @@ export default function Recap() {
   const covGrossTone = covGross === null ? null : covGross >= 3 ? "green" : covGross >= 1 ? "yellow" : "red";
   const covWeightedTone = covWeighted === null ? null : covWeighted >= 3 ? "green" : covWeighted >= 1 ? "yellow" : "red";
 
+  const expectedLanding = wonTotal + totals.weighted;
+  const expectedAttainment = goal > 0 ? expectedLanding / goal : null;
+  const expectedTone = expectedAttainment === null ? null : expectedAttainment >= 1 ? "green" : expectedAttainment >= 0.7 ? "yellow" : "red";
+
   const dateStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14, colorScheme: "dark" };
 
   return (
@@ -169,10 +173,11 @@ export default function Recap() {
             <Stat label="Closed Won" value={fmtUSD(wonTotal)} def="Sum of amounts for deals in Closed Won (Expansion) with a close date in the period." />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 32 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 32 }}>
             <Stat label="Goal" value={goal > 0 ? fmtUSD(goal) : "—"} def="Team goal, prorated by day across each month in the period." />
             <Stat label="Gap" value={goal > 0 ? fmtUSD(gap) : "—"} def="Goal minus Closed Won — what is left to reach the goal." />
             <Stat label="Goal Attainment" value={attainment !== null ? `${Math.round(attainment * 100)}%` : "—"} def="Closed Won divided by Goal. Color reflects pacing vs. time elapsed (or actual attainment once the period is closed)." tone={attainmentTone} />
+            <Stat label="Expected Attainment" value={expectedAttainment !== null ? `${Math.round(expectedAttainment * 100)}%` : "—"} def="(Closed Won + Weighted) divided by Goal — projected landing if open pipeline converts at the 75% win rate." tone={expectedTone} />
             <Stat label="Coverage (Gross)" value={covGross !== null ? `${covGross.toFixed(2)}×` : "—"} def="Gross Amount divided by Gap. Shown only while a positive gap remains." tone={covGrossTone} />
             <Stat label="Coverage (Weighted)" value={covWeighted !== null ? `${covWeighted.toFixed(2)}×` : "—"} def="Weighted divided by Gap. Shown only while a positive gap remains." tone={covWeightedTone} />
           </div>
