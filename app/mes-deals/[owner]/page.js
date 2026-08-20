@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 
 const STAGE_UPSELL = "100309148";
 const WEIGHT = 0.75;
@@ -16,11 +17,14 @@ const OWNERS = [
 const fmtUSD = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
 
-export default function MyDeals() {
+export default function OwnerView() {
+  const params = useParams();
+  const owner = decodeURIComponent(params.owner || "");
+  const valid = OWNERS.includes(owner);
+
   const [deals, setDeals] = useState(null);
   const [notes, setNotes] = useState([]);
   const [error, setError] = useState(null);
-  const [owner, setOwner] = useState("");
   const [drafts, setDrafts] = useState({});
   const [saving, setSaving] = useState({});
 
@@ -43,13 +47,12 @@ export default function MyDeals() {
   }, []);
 
   const myDeals = useMemo(() => {
-    if (!deals || !owner) return [];
+    if (!deals) return [];
     return deals
       .filter((d) => d.dealstage === STAGE_UPSELL && d.owner_name === owner)
       .sort((a, b) => (b.amount || 0) - (a.amount || 0));
   }, [deals, owner]);
 
-  // latest note per deal_id
   const latestNote = useMemo(() => {
     const map = {};
     for (const n of notes) {
@@ -80,27 +83,29 @@ export default function MyDeals() {
     }
   };
 
-  const selectStyle = { background: "#1a1d24", color: "#e6e6e6", border: "1px solid #2c313a", borderRadius: 8, padding: "8px 12px", fontSize: 14 };
+  const totals = useMemo(() => {
+    return myDeals.reduce(
+      (acc, d) => ({ count: acc.count + 1, amount: acc.amount + (d.amount || 0), weighted: acc.weighted + (d.amount || 0) * WEIGHT }),
+      { count: 0, amount: 0, weighted: 0 }
+    );
+  }, [myDeals]);
+
+  if (!valid) {
+    return <main style={{ padding: "32px 24px" }}><p style={{ opacity: 0.6 }}>Unknown owner.</p></main>;
+  }
 
   return (
     <main style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 12 }}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>My Deals</h1>
-        <a href="/" style={{ color: "#6ea8fe", fontSize: 13 }}>← Recap</a>
-      </div>
-      <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 20 }}>Select your name to see your Upsell Forecast deals and add review notes.</p>
-
-      <select value={owner} onChange={(e) => setOwner(e.target.value)} style={{ ...selectStyle, marginBottom: 24 }}>
-        <option value="">— Select owner —</option>
-        {OWNERS.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
+      <h1 style={{ fontSize: 22, margin: "0 0 4px" }}>{owner}</h1>
+      <p style={{ fontSize: 13, opacity: 0.5, marginBottom: 20 }}>
+        {totals.count} deals · Gross {fmtUSD(totals.amount)} · Weighted {fmtUSD(totals.weighted)}
+      </p>
 
       {error && <p style={{ color: "#ff6b6b" }}>Error: {error}</p>}
       {!deals && !error && <p style={{ opacity: 0.6 }}>Loading…</p>}
+      {deals && myDeals.length === 0 && <p style={{ opacity: 0.6 }}>No Upsell Forecast deals for {owner}.</p>}
 
-      {owner && deals && myDeals.length === 0 && <p style={{ opacity: 0.6 }}>No Upsell Forecast deals for {owner}.</p>}
-
-      {owner && myDeals.map((d) => {
+      {myDeals.map((d) => {
         const cur = latestNote[d.id];
         return (
           <div key={d.id} style={{ border: "1px solid #2c313a", borderRadius: 12, padding: 16, marginBottom: 16, background: "#14171d" }}>
