@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 const STAGE_UPSELL = "100309148";
 const STAGE_WON = "13452120";
 const WEIGHT = 0.75;
+const EXCLUDED_OWNERS = ["Jon Scharfman"];
 
 const fmtUSD = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
@@ -46,44 +47,37 @@ export default function Recap() {
 
   const months = useMemo(() => (deals ? buildMonths(deals) : []), [deals]);
 
-  const groups = useMemo(() => {
+  const rows = useMemo(() => {
     if (!deals) return [];
-    const byOwner = {};
-    for (const d of deals) {
-      if (monthKey(d.closedate) !== month) continue;
-      const key = d.owner_name || "(unknown)";
-      if (!byOwner[key]) {
-        byOwner[key] = { owner: key, count: 0, amount: 0, weighted: 0, won: 0, deals: [] };
-      }
-      const g = byOwner[key];
-      if (d.dealstage === STAGE_UPSELL) {
-        g.count += 1;
-        g.amount += d.amount || 0;
-        g.weighted += (d.amount || 0) * WEIGHT;
-        g.deals.push(d);
-      } else if (d.dealstage === STAGE_WON) {
-        g.won += d.amount || 0;
-      }
-    }
-    return Object.values(byOwner)
-      .filter((g) => g.count > 0 || g.won > 0)
-      .sort((a, b) => b.amount - a.amount);
+    return deals
+      .filter((d) => d.dealstage === STAGE_UPSELL)
+      .filter((d) => monthKey(d.closedate) === month)
+      .filter((d) => !EXCLUDED_OWNERS.includes(d.owner_name))
+      .sort((a, b) => (b.amount || 0) - (a.amount || 0));
+  }, [deals, month]);
+
+  const won = useMemo(() => {
+    if (!deals) return 0;
+    return deals
+      .filter((d) => d.dealstage === STAGE_WON)
+      .filter((d) => monthKey(d.closedate) === month)
+      .filter((d) => !EXCLUDED_OWNERS.includes(d.owner_name))
+      .reduce((s, d) => s + (d.amount || 0), 0);
   }, [deals, month]);
 
   const totals = useMemo(() => {
-    return groups.reduce(
-      (acc, g) => ({
-        count: acc.count + g.count,
-        amount: acc.amount + g.amount,
-        weighted: acc.weighted + g.weighted,
-        won: acc.won + g.won,
+    return rows.reduce(
+      (acc, d) => ({
+        count: acc.count + 1,
+        amount: acc.amount + (d.amount || 0),
+        weighted: acc.weighted + (d.amount || 0) * WEIGHT,
       }),
-      { count: 0, amount: 0, weighted: 0, won: 0 }
+      { count: 0, amount: 0, weighted: 0 }
     );
-  }, [groups]);
+  }, [rows]);
 
   return (
-    <main style={{ maxWidth: 1000, margin: "0 auto", padding: "32px 24px" }}>
+    <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, margin: 0 }}>Récap — Upsell Forecast</h1>
         <select
@@ -106,46 +100,39 @@ export default function Recap() {
             <Stat label="Deals" value={totals.count} />
             <Stat label="Amount brut" value={fmtUSD(totals.amount)} />
             <Stat label={`Weighted (${WEIGHT * 100}%)`} value={fmtUSD(totals.weighted)} />
-            <Stat label="Closed Won (mois)" value={fmtUSD(totals.won)} />
+            <Stat label="Closed Won (mois)" value={fmtUSD(won)} />
           </div>
 
-          {groups.length === 0 && <p style={{ opacity: 0.6 }}>Aucun deal pour {month}.</p>}
-
-          {groups.map((g) => (
-            <div key={g.owner} style={{ border: "1px solid #2c313a", borderRadius: 12, padding: 16, marginBottom: 16, background: "#14171d" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
-                <h2 style={{ fontSize: 16, margin: 0 }}>{g.owner}</h2>
-                <div style={{ display: "flex", gap: 18, fontSize: 13, opacity: 0.85 }}>
-                  <span>{g.count} deals</span>
-                  <span>Brut {fmtUSD(g.amount)}</span>
-                  <span>Weighted {fmtUSD(g.weighted)}</span>
-                  <span>Won {fmtUSD(g.won)}</span>
-                </div>
-              </div>
+          {rows.length === 0 ? (
+            <p style={{ opacity: 0.6 }}>Aucun deal pour {month}.</p>
+          ) : (
+            <div style={{ border: "1px solid #2c313a", borderRadius: 12, overflow: "hidden", background: "#14171d" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
-                  <tr style={{ textAlign: "left", opacity: 0.6 }}>
-                    <th style={{ padding: "6px 8px" }}>Deal</th>
-                    <th style={{ padding: "6px 8px", textAlign: "right" }}>Locations</th>
-                    <th style={{ padding: "6px 8px", textAlign: "right" }}>Amount</th>
-                    <th style={{ padding: "6px 8px", textAlign: "right" }}>Weighted</th>
-                    <th style={{ padding: "6px 8px" }}>Close date</th>
+                  <tr style={{ textAlign: "left", opacity: 0.6, background: "#181c23" }}>
+                    <th style={{ padding: "10px 12px" }}>Deal</th>
+                    <th style={{ padding: "10px 12px" }}>Deal Owner</th>
+                    <th style={{ padding: "10px 12px", textAlign: "right" }}>Locations</th>
+                    <th style={{ padding: "10px 12px", textAlign: "right" }}>Amount</th>
+                    <th style={{ padding: "10px 12px", textAlign: "right" }}>Weighted</th>
+                    <th style={{ padding: "10px 12px" }}>Close date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {g.deals.map((d) => (
+                  {rows.map((d) => (
                     <tr key={d.id} style={{ borderTop: "1px solid #232830" }}>
-                      <td style={{ padding: "6px 8px" }}>{d.dealname}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "right" }}>{d.locations ?? "—"}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "right" }}>{fmtUSD(d.amount)}</td>
-                      <td style={{ padding: "6px 8px", textAlign: "right" }}>{fmtUSD((d.amount || 0) * WEIGHT)}</td>
-                      <td style={{ padding: "6px 8px" }}>{d.closedate ? d.closedate.slice(0, 10) : "—"}</td>
+                      <td style={{ padding: "10px 12px" }}>{d.dealname}</td>
+                      <td style={{ padding: "10px 12px", opacity: 0.85 }}>{d.owner_name}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{d.locations ?? "—"}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD(d.amount)}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD((d.amount || 0) * WEIGHT)}</td>
+                      <td style={{ padding: "10px 12px" }}>{d.closedate ? d.closedate.slice(0, 10) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ))}
+          )}
         </>
       )}
     </main>
