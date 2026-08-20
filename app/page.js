@@ -89,7 +89,10 @@ export default function Recap() {
   return (
     <main style={{ maxWidth: 1150, margin: "0 auto", padding: "32px 24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>Recap — Upsell Forecast</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <h1 style={{ fontSize: 22, margin: 0 }}>Recap — Upsell Forecast</h1>
+          <a href="/mes-deals" style={{ color: "#6ea8fe", fontSize: 13 }}>My Deals →</a>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 13, opacity: 0.6 }}>From</span>
           <input type="date" value={from} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setFrom(e.target.value)} style={dateStyle} />
