@@ -48,7 +48,8 @@ export default function Sidebar() {
         Upsell Forecast
       </div>
 
-      <a href="/" style={linkStyle(isMaster)}>Master Report</a>
+      <a href="/" style={linkStyle(isMaster)}>Master Report (Forecast)</a>
+      <a href="/actuals" style={linkStyle(pathname === "/actuals")}>Master Report (Actuals)</a>
 
       <div style={{ marginTop: 8 }}>
         <button
