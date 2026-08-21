@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import DateRange from "../../components/DateRange";
 
 const STAGE_UPSELL = "100309148";
 const STAGE_WON = "13452120";
@@ -148,12 +149,7 @@ export default function OwnerView() {
     <main style={{ maxWidth: 900, margin: "0 auto", padding: "32px 24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 12 }}>
         <h1 style={{ fontSize: 22, margin: 0 }}>{owner}</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, opacity: 0.6 }}>From</span>
-          <input type="date" value={from} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setFrom(e.target.value)} style={dateStyle} />
-          <span style={{ fontSize: 13, opacity: 0.6 }}>To</span>
-          <input type="date" value={to} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setTo(e.target.value)} style={dateStyle} />
-        </div>
+<DateRange from={from} to={to} onFrom={setFrom} onTo={setTo} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, margin: "16px 0 28px" }}>
         <Stat label="Upsell (Forecast) Deals" value={totals.count} def="Number of Upsell Forecast deals with a close date in the selected period." />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import DateRange from "./components/DateRange";
 
 const STAGE_UPSELL = "100309148";
 const STAGE_WON = "13452120";
@@ -153,12 +154,7 @@ export default function Recap() {
     <main style={{ maxWidth: 1150, margin: "0 auto", padding: "32px 24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <h1 style={{ fontSize: 22, margin: 0 }}>Master Report — Upsell Forecast</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, opacity: 0.6 }}>From</span>
-          <input type="date" value={from} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setFrom(e.target.value)} style={dateStyle} />
-          <span style={{ fontSize: 13, opacity: 0.6 }}>To</span>
-          <input type="date" value={to} min={bounds.min || undefined} max={bounds.max || undefined} onChange={(e) => setTo(e.target.value)} style={dateStyle} />
-        </div>
+<DateRange from={from} to={to} onFrom={setFrom} onTo={setTo} />
       </div>
 
       <div style={{ border: "1px solid #2c313a", borderRadius: 10, padding: "12px 14px", background: "#14171d", marginBottom: 24, fontSize: 13, opacity: 0.75, lineHeight: 1.5 }}>
