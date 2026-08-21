@@ -7,7 +7,7 @@ const STAGE_WON = "13452120";
 const WEIGHT = 0.75;
 const HUB_ID = "21233403";
 const hsUrl = (id) => `https://app.hubspot.com/contacts/${HUB_ID}/record/0-3/${id}`;
-const EXCLUDED_OWNERS = ["Jon Scharfman"];
+const EXCLUDED_OWNERS = ["Jon Scharfman", "Breanne Foofat"];
 
 const fmtUSD = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
