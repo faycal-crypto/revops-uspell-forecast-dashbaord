@@ -45,7 +45,7 @@ export default function Sidebar() {
       }}
     >
       <div style={{ fontSize: 12, opacity: 0.4, textTransform: "uppercase", letterSpacing: 0.5, padding: "0 12px 12px" }}>
-        Upsell Forecast
+        CS Upsell Forecast
       </div>
 
       <a href="/" style={linkStyle(isMaster)}>Master Report (Forecast)</a>
