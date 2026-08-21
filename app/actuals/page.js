@@ -158,6 +158,17 @@ export default function Actuals() {
                   {totalVarPct !== null ? `${totalVarPct >= 0 ? "+" : "−"}${Math.abs(Math.round(totalVarPct * 100))}%` : "—"}
                 </td>
               </tr>
+              <tr style={{ borderTop: "1px solid #2c313a", background: "#181c23", fontWeight: 600, opacity: 0.85 }}>
+                <td style={{ padding: "10px 12px" }}>Average</td>
+                <td style={{ padding: "10px 12px", textAlign: "right" }}>{fmtUSD(rows.length ? totals.actual / rows.length : 0)}</td>
+                <td style={{ padding: "10px 12px", textAlign: "right" }}>{totals.forecast > 0 ? fmtUSD(totals.forecast / rows.length) : "—"}</td>
+                <td style={{ padding: "10px 12px", textAlign: "right", color: totals.forecast > 0 ? varColor(totalVarAbs) : "#e6e6e6" }}>
+                  {totals.forecast > 0 ? `${totalVarAbs >= 0 ? "+" : "−"}${fmtUSD(Math.abs(totalVarAbs / rows.length))}` : "—"}
+                </td>
+                <td style={{ padding: "10px 12px", textAlign: "right", color: totalVarPct !== null ? varColor(totalVarPct) : "#e6e6e6" }}>
+                  {totalVarPct !== null ? `${totalVarPct >= 0 ? "+" : "−"}${Math.abs(Math.round(totalVarPct * 100))}%` : "—"}
+                </td>
+              </tr>
             </tfoot>
           </table>
         </div>
