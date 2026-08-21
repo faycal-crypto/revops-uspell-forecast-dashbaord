@@ -27,9 +27,15 @@ export async function GET() {
       const data = await codaGet(`/docs/${DOC}/tables/${GOALS_TABLE}/rows?${qs.toString()}`);
       for (const row of data.items || []) {
         const v = row.values || {};
+        // month may be a full date like "2026-07-01T00:00:00.000-07:00".
+        // Normalize to "YYYY-MM" using the calendar year/month of the string
+        // (ignore timezone shifting by reading the leading YYYY-MM directly).
+        let month = String(v.month || "");
+        const match = month.match(/^(\d{4})-(\d{2})/);
+        if (match) month = `${match[1]}-${match[2]}`;
         goals.push({
           owner_name: v.owner_name || "",
-          month: v.month || "",
+          month,
           goal_amount: Number(v.goal_amount) || 0,
         });
       }
